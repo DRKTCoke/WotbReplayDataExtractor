@@ -28,12 +28,14 @@ public class PlayerResult {
     public String nickname = "";
     public String clan = "";
     public Long platoonId;
+    public Long rank;
 
     // 展示派生字段 (enrich)
     public String tankName = "";
     public Object tankTier = "";
     public String tankType = "";
     public String tankNation = "";
+    public Object alphaDamage = "";
     public String platoonLabel = "";
 
     // 评分 (按车型基准归一化, 由 Rating.compute 计算; 未计算时为 null)

@@ -26,7 +26,8 @@ public final class Columns {
             new Col("车辆", "tank_name", 20, 120, false, p -> p.tankName),
             new Col("等级", "tank_tier", 6, 45, true, p -> p.tankTier),
             new Col("坦克类型", "tank_type", 9, 60, false, p -> p.tankType),
-            new Col("国家", "tank_nation", 8, 55, false, p -> p.tankNation)
+            new Col("国家", "tank_nation", 8, 55, false, p -> p.tankNation),
+            new Col("炮伤", "alpha_damage", 7, 55, true, p -> p.alphaDamage)
     );
 
     public static final List<Col> STAT = List.of(
@@ -47,6 +48,7 @@ public final class Columns {
 
     public static final List<Col> TAIL = List.of(
             new Col("排", "platoon_label", 6, 40, false, p -> p.platoonLabel),
+            new Col("军阶", "rank", 6, 45, true, p -> p.rank),
             new Col("车辆ID", "tank_id", 9, 65, true, p -> p.tankId),
             new Col("账号ID", "account_id", 12, 95, true, p -> p.accountId)
     );

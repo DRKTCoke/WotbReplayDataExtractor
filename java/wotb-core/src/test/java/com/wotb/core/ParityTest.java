@@ -50,8 +50,10 @@ class ParityTest {
         assertTrue(tp.size() > 600, "车辆库应非空");
         assertEquals("Kranvagn", tp.info(4481).name);
         assertEquals("重坦", tp.info(4481).type);
+        assertEquals(410, tp.info(4481).alphaDamage);
         // 轻坦车种回归(枚举0被省略时仍应解析)
         assertEquals("轻坦", tp.info(24321).type, "T-100 LT(24321) 应为轻坦");
+        assertEquals(310, tp.info(24321).alphaDamage, "T-100 LT 默认炮伤");
     }
 
     @Test
@@ -136,6 +138,23 @@ class ParityTest {
         assertTrue(all.stream().allMatch(p -> p.rating != null), "每位玩家都应有评分");
         double avg = all.stream().mapToInt(p -> p.rating).average().orElse(0);
         assertTrue(avg > 850 && avg < 1150, "评分均值应接近 1000, 实际 " + avg);
+    }
+
+    @Test
+    void ratingAnalyzerProducesRequestedMetrics() throws Exception {
+        List<Battle> battles = new ArrayList<>();
+        for (Path p : replays()) {
+            battles.add(ReplayParser.parse(p));
+        }
+        List<RatingAnalyzer.Row> rows = RatingAnalyzer.compute(battles, Tankopedia.load());
+        assertFalse(rows.isEmpty());
+        RatingAnalyzer.Row first = rows.get(0);
+        assertTrue(first.rating > 0);
+        assertTrue(first.kast >= 0 && first.kast <= 100);
+        assertTrue(first.contribution >= 0);
+        assertTrue(first.influence >= 0);
+        assertTrue(first.damageAvg >= 0);
+        assertTrue(first.kills >= 0);
     }
 
     @Test

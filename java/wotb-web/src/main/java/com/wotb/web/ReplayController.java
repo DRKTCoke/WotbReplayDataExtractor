@@ -45,7 +45,8 @@ public class ReplayController {
     public Object columns() {
         return java.util.Map.of(
                 "player", Mapper.playerColumns(),
-                "aggregate", Mapper.aggregateColumns());
+                "aggregate", Mapper.aggregateColumns(),
+                "rating", Mapper.ratingColumns());
     }
 
     /** 健康检查。 */
@@ -73,6 +74,14 @@ public class ReplayController {
 
         return new Dtos.PreviewResponse(battles, aggregate, c.duplicates, c.failures,
                 Mapper.playerColumns(), Mapper.aggregateColumns());
+    }
+
+    /** 实时 rating 分析: 仅基于本次上传的回放, 不保存历史。 */
+    @PostMapping(value = "/rating", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Dtos.RatingResponse rating(@RequestParam("files") MultipartFile[] files) throws Exception {
+        Replays.Collected c = Replays.collect(toSources(files), null);
+        List<Dtos.RatingRow> rows = Mapper.toRatings(RatingAnalyzer.compute(c.battles, tankopedia));
+        return new Dtos.RatingResponse(rows, c.duplicates, c.failures, Mapper.ratingColumns());
     }
 
     /** 导出 xlsx: 单场 -> 单场工作簿; 多场 -> 去重后的汇总工作簿。 */

@@ -34,6 +34,27 @@ def i18n_en(raw):
     return best
 
 
+def alpha_damage(td):
+    """取最高等级炮的第一种炮弹伤害, 作为车辆默认炮伤。"""
+    best_tier = -1
+    best_damage = None
+    for raw_gun in td.get(20, []):
+        gun = decode_protobuf(raw_gun)
+        tier = f1(gun, 7, 0) or 0
+        gun_info = decode_protobuf(f1(gun, 9, b""))
+        shells = gun_info.get(10, [])
+        if not shells:
+            continue
+        first_shell = decode_protobuf(shells[0])
+        damage = f1(first_shell, 4)
+        if damage is None:
+            continue
+        if tier > best_tier:
+            best_tier = tier
+            best_damage = damage
+    return best_damage
+
+
 def main():
     print(f"下载 {URL} ...")
     raw = urllib.request.urlopen(URL, timeout=60).read()
@@ -52,6 +73,7 @@ def main():
             "class": CLASS.get(f1(td, 17, 0), ""),
             "nation": NATION.get(nation, nation),
             "premium": (f1(td, 13) == 1),
+            "alphaDamage": alpha_damage(td),
         }
     obj = {
         "meta": {

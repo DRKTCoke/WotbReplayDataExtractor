@@ -34,7 +34,7 @@ public final class ReplayParser {
     static final int[] F_ASSIST = {9, 10};
     static final int F_SURVIVED = 105;          // == -1 表示存活
     // 名册 PlayerInfo (#201 -> #2)
-    static final int R_NICK = 1, R_PLATOON = 2, R_TEAM = 3, R_CLAN = 5;
+    static final int R_NICK = 1, R_PLATOON = 2, R_TEAM = 3, R_CLAN = 5, R_RANK = 9;
 
     private ReplayParser() {
     }
@@ -66,6 +66,7 @@ public final class ReplayParser {
         // ---- 名册 #201 ----
         Map<Long, String[]> roster = new HashMap<>();   // acc -> [nickname, clan]
         Map<Long, Long> platoonByAcc = new HashMap<>();
+        Map<Long, Long> rankByAcc = new HashMap<>();
         for (Object praw : root.getOrDefault(201, List.of())) {
             Map<Integer, List<Object>> p = Protobuf.decode((byte[]) praw);
             long acc = Protobuf.firstLong(p, 1, 0);
@@ -74,6 +75,10 @@ public final class ReplayParser {
             Object pl = Protobuf.first(info, R_PLATOON);
             if (pl instanceof Number) {
                 platoonByAcc.put(acc, ((Number) pl).longValue());
+            }
+            Object rank = Protobuf.first(info, R_RANK);
+            if (rank instanceof Number) {
+                rankByAcc.put(acc, ((Number) rank).longValue());
             }
         }
 
@@ -116,10 +121,13 @@ public final class ReplayParser {
                     ? info[0] : String.valueOf(pr.accountId);
             pr.clan = (info != null && info[1] != null) ? info[1] : "";
             pr.platoonId = platoonByAcc.get(pr.accountId);
+            pr.rank = rankByAcc.get(pr.accountId);
         }
 
         Battle battle = new Battle();
         battle.arenaId = String.valueOf(arenaId);
+        battle.raw = root;
+        battle.replayTrace = DataReplayParser.parse(entries.get("data.wotreplay"), players);
         Object win = Protobuf.first(root, 3);
         battle.winnerTeam = (win instanceof Number) ? ((Number) win).intValue() : null;
         battle.modeMapId = (Long) Protobuf.first(root, 1) instanceof Long

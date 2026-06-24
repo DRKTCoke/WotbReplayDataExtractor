@@ -59,7 +59,36 @@ class WebApiTest {
                 .andReturn().getResponse().getContentAsString();
         JsonNode n = om.readTree(json);
         assertTrue(n.get("player").size() > 10);
+        assertTrue(stream(n.get("player")).anyMatch(c -> "rank".equals(c.get("key").asText())));
+        assertTrue(stream(n.get("player")).anyMatch(c -> "alpha_damage".equals(c.get("key").asText())));
         assertTrue(n.get("aggregate").size() > 10);
+        assertTrue(n.get("rating").size() > 5);
+    }
+
+    @Test
+    void ratingEndpointReturnsRealtimeLeaderboard() throws Exception {
+        List<Path> files = replays();
+        var req = multipart("/api/rating");
+        for (Path p : files) {
+            req = req.file(file(p));
+        }
+        req = req.file(new MockMultipartFile("files", "dup.wotbreplay",
+                "application/octet-stream", Files.readAllBytes(files.get(0))));
+
+        String json = mvc().perform(req.contentType(MediaType.MULTIPART_FORM_DATA))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode n = om.readTree(json);
+        assertEquals(1, n.get("duplicates").size(), "跳过 1 个重复");
+        assertTrue(n.get("rows").size() >= 14, "应返回选手 rating 行");
+        JsonNode cells = n.get("rows").get(0).get("cells");
+        assertTrue(cells.has("rating"));
+        assertTrue(cells.has("kast"));
+        assertTrue(cells.has("contribution"));
+        assertTrue(cells.has("influence"));
+        assertTrue(cells.has("damage_avg"));
+        assertTrue(cells.has("kills"));
+        assertTrue(cells.get("rating").asInt() > 0);
     }
 
     @Test
@@ -82,7 +111,20 @@ class WebApiTest {
         // 校验首场玩家数据结构
         JsonNode b0 = n.get("battles").get(0);
         assertEquals(14, b0.get("players").size());
+        assertTrue(b0.has("battleRawColumns"));
+        assertTrue(b0.has("battleRaw"));
+        assertTrue(b0.get("battleRawColumns").size() > 0, "应暴露 battle_results 顶层 protobuf 字段列");
+        assertTrue(b0.get("rawColumns").size() > 10, "应暴露原始 protobuf 字段列");
+        assertTrue(b0.has("replayTrace"));
+        assertTrue(b0.get("replayTrace").has("packetCount"));
+        assertTrue(b0.get("replayTrace").has("packetTypeMaxPayloadBytes"));
+        assertTrue(b0.get("replayTrace").has("entityMethodSubtypes"));
+        assertTrue(b0.get("replayTrace").has("entityMethodSubtypeMaxPayloadBytes"));
+        assertTrue(b0.get("replayTrace").has("packetGroups"));
+        assertTrue(b0.get("replayTrace").has("entityMethodGroups"));
         assertTrue(b0.get("players").get(0).get("cells").has("damage_dealt"));
+        assertTrue(b0.get("players").get(0).has("raw"));
+        assertTrue(b0.get("players").get(0).get("raw").has("#101"));
     }
 
     @Test
@@ -120,5 +162,11 @@ class WebApiTest {
         }
         assertEquals(files.size(), names.size());
         assertTrue(names.stream().allMatch(n -> n.endsWith(".xlsx")));
+    }
+
+    private static Stream<JsonNode> stream(JsonNode n) {
+        List<JsonNode> nodes = new java.util.ArrayList<>();
+        n.forEach(nodes::add);
+        return nodes.stream();
     }
 }

@@ -1,6 +1,8 @@
 package com.wotb.core.model;
 
 import java.util.List;
+import java.util.Map;
+import com.wotb.core.DataReplayParser;
 
 /** 一场战斗的基本信息 + 全部玩家战绩。 */
 public class Battle {
@@ -14,6 +16,8 @@ public class Battle {
     public Long startTime;
     public String recorder = "";
     public String recorderVehicle = "";
+    public DataReplayParser.Summary replayTrace = DataReplayParser.Summary.missing();
+    public Map<Integer, List<Object>> raw;
     public List<PlayerResult> players;
 
     public int nPlayers() {

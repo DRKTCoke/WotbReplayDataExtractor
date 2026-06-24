@@ -16,12 +16,14 @@ public final class Tankopedia {
         public final Object tier;
         public final String type;   // 车种(轻坦/中坦/重坦/TD)
         public final String nation;
+        public final Integer alphaDamage;
 
-        TankInfo(String name, Object tier, String type, String nation) {
+        TankInfo(String name, Object tier, String type, String nation, Integer alphaDamage) {
             this.name = name;
             this.tier = tier;
             this.type = type;
             this.nation = nation;
+            this.alphaDamage = alphaDamage;
         }
     }
 
@@ -49,13 +51,14 @@ public final class Tankopedia {
     public TankInfo info(long tankId) {
         JsonNode t = data.get(String.valueOf(tankId));
         if (t == null) {
-            return new TankInfo("#" + tankId, "", "", "");
+            return new TankInfo("#" + tankId, "", "", "", null);
         }
         String name = t.hasNonNull("name") ? t.get("name").asText() : "#" + tankId;
         Object tier = t.hasNonNull("tier") ? t.get("tier").asInt() : "";
         String type = t.hasNonNull("class") ? t.get("class").asText() : "";
         String nation = t.hasNonNull("nation") ? t.get("nation").asText() : "";
-        return new TankInfo(name, tier, type, nation);
+        Integer alphaDamage = t.hasNonNull("alphaDamage") ? t.get("alphaDamage").asInt() : null;
+        return new TankInfo(name, tier, type, nation, alphaDamage);
     }
 
     public int size() {
