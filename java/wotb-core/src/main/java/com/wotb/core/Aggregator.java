@@ -18,7 +18,7 @@ public final class Aggregator {
         public String clan = "";
         long lastTime = -1;
         public int battles, wins, survived;
-        public long kills, damage, assisted, received, blocked;
+        public long kills, damage, potentialDamage, potentialDamageSupplement, assisted, received, blocked;
         public long shots, hits, pens, hitsReceived, pensReceived, enemiesDamaged;
         public long ratingSum;            // 各场 rating 之和(用于场均)
         public final Map<String, Integer> tanks = new TreeMap<>();
@@ -88,6 +88,8 @@ public final class Aggregator {
                 }
                 a.kills += p.kills;
                 a.damage += p.damageDealt;
+                a.potentialDamage += p.potentialDamage;
+                a.potentialDamageSupplement += p.potentialDamageSupplement;
                 a.assisted += p.damageAssisted;
                 a.received += p.damageReceived;
                 a.blocked += p.damageBlocked;

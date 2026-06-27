@@ -1,5 +1,8 @@
 package com.wotb.core.model;
 
+import com.wotb.core.PotentialDamage;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -37,6 +40,12 @@ public class PlayerResult {
     public String tankNation = "";
     public Object alphaDamage = "";
     public String platoonLabel = "";
+
+    // 潜在伤害: 真实伤害 + 对击杀目标低于 0.9 炮伤阈值时的补增伤害。
+    public final List<PotentialDamage.KillVictim> killVictims = new ArrayList<>();
+    public int potentialDamage;
+    public int potentialDamageSupplement;
+    public boolean potentialDamageDetailed;
 
     // 评分 (按车型基准归一化, 由 Rating.compute 计算; 未计算时为 null)
     public Integer rating;

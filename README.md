@@ -38,7 +38,7 @@
 - 多场导出 Excel：按 `arenaUniqueId` 去重，生成 `汇总`、`明细`、`战斗列表`。
 - 自包含表现**评分**：按车型基准归一化(类 WN8，1000=同型平均)，单场出「评分」、汇总出「场均评分」。详见 [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) 的「评分（Rating）」。
 - GUI 支持选择文件或文件夹、预览数据、合并汇总或逐场导出。
-- Java / Web 版提供 `/api/preview`、`/api/export`、`/api/columns`、`/api/health`、`/api/shutdown`。
+- Java / Web 版提供 `/api/preview`、`/api/rating`、`/api/export`、`/api/columns`、`/api/health`、`/api/shutdown`；扩展分析页单独承载 replay trace、潜在伤害字段与实时 rating 展示。
 - Java 离线 exe：双击运行，自动打开浏览器，无需 Python 或 JDK。
 
 ## 快速使用：Python 离线版

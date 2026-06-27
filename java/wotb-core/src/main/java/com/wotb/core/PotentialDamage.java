@@ -1,5 +1,8 @@
 package com.wotb.core;
 
+import com.wotb.core.model.Battle;
+import com.wotb.core.model.PlayerResult;
+
 import java.util.List;
 
 /** Computes potential damage from per-victim kill damage details. */
@@ -50,6 +53,23 @@ public final class PotentialDamage {
         return (double) total / battles.size();
     }
 
+    /** Applies the current potential-damage rule to every player in a replay batch. */
+    public static void apply(List<Battle> battles, Tankopedia tp) {
+        if (battles == null) {
+            return;
+        }
+        for (Battle battle : battles) {
+            for (PlayerResult player : battle.players) {
+                Integer alpha = tp.info(player.tankId).alphaDamage;
+                BattlePotential result = computeBattle(player.damageDealt,
+                        alpha == null ? 0 : alpha,
+                        player.killVictims);
+                player.potentialDamage = result.potentialDamage();
+                player.potentialDamageSupplement = result.supplementDamage();
+                player.potentialDamageDetailed = !player.killVictims.isEmpty();
+            }
+        }
+    }
     private static int supplementForVictim(int alphaDamage, KillVictim victim) {
         if (victim == null || victim.damage() < 0 || victim.penetrations() <= 0) {
             return 0;

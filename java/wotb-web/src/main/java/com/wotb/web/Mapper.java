@@ -77,6 +77,8 @@ final class Mapper {
             new Dtos.ColumnDef("contribution", true),
             new Dtos.ColumnDef("influence", true),
             new Dtos.ColumnDef("damage_avg", true),
+            new Dtos.ColumnDef("potential_damage_avg", true),
+            new Dtos.ColumnDef("potential_damage_supplement_avg", true),
             new Dtos.ColumnDef("kills", true),
             new Dtos.ColumnDef("kills_avg", true),
             new Dtos.ColumnDef("account_id", true)
@@ -143,6 +145,8 @@ final class Mapper {
             cells.put("contribution", r1(r.contribution));
             cells.put("influence", r1(r.influence));
             cells.put("damage_avg", r1(r.damageAvg));
+            cells.put("potential_damage_avg", r1(r.potentialDamageAvg));
+            cells.put("potential_damage_supplement_avg", r1(r.potentialDamageSupplementAvg));
             cells.put("kills", r.kills);
             cells.put("kills_avg", r2(r.killsAvg));
             cells.put("account_id", r.accountId);

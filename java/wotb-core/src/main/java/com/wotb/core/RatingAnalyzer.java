@@ -19,13 +19,16 @@ public final class RatingAnalyzer {
         public int wins;
         public long kills;
         public long damage;
+        public long potentialDamage;
+        public long potentialDamageSupplement;
         public int rating;
         public double kast;
         public double contribution;
         public double influence;
         public double damageAvg;
+        public double potentialDamageAvg;
+        public double potentialDamageSupplementAvg;
         public double killsAvg;
-
         double ratingSum;
         double effectiveContribution;
         double teamEffectiveContribution;
@@ -48,8 +51,9 @@ public final class RatingAnalyzer {
             contribution = teamEffectiveContribution == 0
                     ? 0 : 100.0 * effectiveContribution / teamEffectiveContribution;
             damageAvg = (double) damage / battles;
+            potentialDamageAvg = (double) potentialDamage / battles;
+            potentialDamageSupplementAvg = (double) potentialDamageSupplement / battles;
             killsAvg = (double) kills / battles;
-
             double ecShare = teamEffectiveContribution == 0
                     ? 0 : effectiveContribution / teamEffectiveContribution;
             double killShare = killShareDenominator == 0 ? 0 : kills / killShareDenominator;
@@ -73,6 +77,7 @@ public final class RatingAnalyzer {
      * Trade is event-level data and is not available without parsing the full battle stream.</p>
      */
     public static List<Row> compute(List<Battle> battles, Tankopedia tp) {
+        PotentialDamage.apply(battles, tp);
         Rating.compute(battles, tp);
         Map<Long, Row> rows = new LinkedHashMap<>();
         for (Battle b : battles) {
@@ -107,6 +112,8 @@ public final class RatingAnalyzer {
                 }
                 row.kills += p.kills;
                 row.damage += p.damageDealt;
+                row.potentialDamage += p.potentialDamage;
+                row.potentialDamageSupplement += p.potentialDamageSupplement;
                 row.ratingSum += p.rating == null ? 0 : p.rating;
                 row.effectiveContribution += Rating.effectiveContribution(p);
                 row.teamEffectiveContribution += teamEc[team];

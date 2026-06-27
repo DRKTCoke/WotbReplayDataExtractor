@@ -62,6 +62,7 @@ public class ReplayController {
     @PostMapping(value = "/preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Dtos.PreviewResponse preview(@RequestParam("files") MultipartFile[] files) throws Exception {
         Replays.Collected c = Replays.collect(toSources(files), null);
+        PotentialDamage.apply(c.battles, tankopedia);
         Rating.compute(c.battles, tankopedia);   // 基准=本次上传集合
 
         List<Dtos.BattleDto> battles = new ArrayList<>();

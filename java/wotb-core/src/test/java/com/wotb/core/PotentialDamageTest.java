@@ -1,10 +1,13 @@
 package com.wotb.core;
 
+import com.wotb.core.model.Battle;
+import com.wotb.core.model.PlayerResult;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 class PotentialDamageTest {
 
@@ -30,5 +33,19 @@ class PotentialDamageTest {
         assertEquals(1600, r.actualDamage());
         assertEquals(1600, r.potentialDamage());
         assertEquals(0, r.supplementDamage());
+    }
+    @Test
+    void applyKeepsActualDamageWhenKillVictimDetailsAreMissing() {
+        PlayerResult player = new PlayerResult();
+        player.tankId = -1;
+        player.damageDealt = 1234;
+        Battle battle = new Battle();
+        battle.players = List.of(player);
+
+        PotentialDamage.apply(List.of(battle), Tankopedia.load());
+
+        assertEquals(1234, player.potentialDamage);
+        assertEquals(0, player.potentialDamageSupplement);
+        assertFalse(player.potentialDamageDetailed);
     }
 }

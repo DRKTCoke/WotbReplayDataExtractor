@@ -15,7 +15,7 @@
 |-------------|------|--------------------------------------------------------------|
 | `wotb-core` | 共享 | 核心库：解压回放、读取 pickle、解码 protobuf、车辆库映射、去重汇总、POI 导出 xlsx        |
 | `wotb-web`  | 共享 | Spring Boot 4 REST API + 桌面模式入口，监听 `8087`（Web 模式）或自动端口（桌面模式） |
-| `frontend`  | 共享 | Vue 3 + Vite 前端，单文件组件，无 router，开发端口 `5173`                   |
+| `frontend`  | 共享 | Vue 3 + Vite 前端，两个 HTML 入口：原解析页 `index.html` 与扩展分析页 `extended.html`，开发端口 `5173` |
 | `offline/`  | 离线 | `build-desktop.bat`（前端构建 → Maven 打包 → jpackage），产物 `offline/dist-desktop/` |
 | `online/`   | 联网 | `docker-compose.yml`、`backend.Dockerfile`、`frontend.Dockerfile`、`nginx.conf` |
 
@@ -71,7 +71,8 @@ docker compose up --build
 
 访问：
 
-- 前端：http://localhost:8088
+- 原解析页：http://localhost:8088
+- 扩展分析页：http://localhost:8088/extended
 - 后端 API：http://localhost:8087
 - 健康检查：http://localhost:8087/api/health
 
@@ -99,7 +100,7 @@ npm install
 npm run dev
 ```
 
-Vite 开发服会把 `/api` 代理到 `http://localhost:8087`。
+Vite 开发服会把 `/api` 代理到 `http://localhost:8087`。原解析页访问 `http://localhost:5173/`，扩展分析页访问 `http://localhost:5173/extended`（实际静态文件为 `/extended.html`）。
 
 ### 桌面模式开发
 
@@ -122,8 +123,9 @@ java -jar wotb-web/target/wotb-web.jar --desktop
 
 - `player`：单场玩家数据列。
 - `aggregate`：多场汇总列。
+- `rating`：实时 rating 分析列。
 
-中文显示名不在 API 里：前端有自己的 `PLAYER_LABELS` / `AGG_LABELS` 映射，导出层（`Columns.java` / `ExcelExporter` / Python）各自维护 xlsx 表头。详见 [../DEVELOPER_GUIDE.md](../DEVELOPER_GUIDE.md) 的「显示名（i18n）架构」。
+中文显示名不在 API 里：原解析页 `App.vue` 与扩展分析页 `ExtendedApp.vue` 各自维护需要展示的标签映射，导出层（`Columns.java` / `ExcelExporter` / Python）各自维护 xlsx 表头。详见 [../DEVELOPER_GUIDE.md](../DEVELOPER_GUIDE.md) 的「显示名（i18n）架构」。
 
 ### `POST /api/preview`
 
@@ -132,10 +134,20 @@ java -jar wotb-web/target/wotb-web.jar --desktop
 返回：
 
 - 去重后的战斗列表。
-- 每场玩家数据。
+- 每场玩家数据；扩展入口会额外展示 `potential_damage`、`potential_damage_supplement`、`potential_damage_detail`。
 - 多场上传时的跨场汇总。
 - 重复文件与失败文件信息。
 - 列定义。
+
+### `POST /api/rating`
+
+`multipart/form-data`，字段名为 `files`，可上传一个或多个 `.wotbreplay`。仅基于本次上传批次实时计算，不落库、不读取历史记录。
+
+返回：
+
+- 每名选手的 rating、KAST、贡献率、影响力、均伤、潜在均伤、场均补增、人头等字段。
+- 重复文件与失败文件信息。
+- rating 列定义。
 
 ### `POST /api/export`
 

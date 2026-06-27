@@ -65,6 +65,7 @@ public final class ExcelExporter {
 
     // ---------------- 单场 ----------------
     public static void writeSingle(Battle battle, Tankopedia tp, OutputStream out) throws IOException {
+        PotentialDamage.apply(java.util.List.of(battle), tp);
         Rating.compute(java.util.List.of(battle), tp);   // 基准=该场内
         ExcelExporter e = new ExcelExporter();
         e.sheetBattleInfo(battle);
@@ -172,6 +173,7 @@ public final class ExcelExporter {
     public static void writeAggregate(List<Battle> battles, List<String> sourceNames,
                                       List<String[]> duplicates, Tankopedia tp,
                                       OutputStream out) throws IOException {
+        PotentialDamage.apply(battles, tp);
         Rating.compute(battles, tp);   // 基准=这批战斗
         ExcelExporter e = new ExcelExporter();
         Map<Long, Aggregator.Agg> agg = Aggregator.aggregate(battles, tp);

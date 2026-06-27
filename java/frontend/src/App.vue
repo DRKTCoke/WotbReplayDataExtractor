@@ -5,14 +5,11 @@ const files = ref([])
 const loading = ref(false)
 const error = ref('')
 const resp = ref(null)
-const ratingResp = ref(null)
 const playerCols = ref([])
-const ratingCols = ref([])
 const visibleKeys = ref([])        // 单场表显示的列
 const aggVisibleKeys = ref([])     // 汇总表显示的列
-const ratingVisibleKeys = ref([])  // Rating表显示的列
 const draftKeys = ref([])          // 列选择器里的草稿(点"应用"才生效)
-const pickerScope = ref('player')  // 当前选择器作用的表: 'player' | 'agg' | 'rating'
+const pickerScope = ref('player')  // 当前选择器作用的表: 'player' | 'agg'
 const showColPicker = ref(false)
 const activeTab = ref('aggregate')
 const sortState = ref({})
@@ -33,13 +30,12 @@ const TEAM = { 1: '队伍1', 2: '队伍2' }
 // 单场表与汇总表各一套: 同名 key(如 kills) 在两表含义不同(击杀 vs 总击杀)。
 const PLAYER_LABELS = {
   nickname: '玩家', clan: '战队', tank_name: '车辆', tank_tier: '等级',
-  tank_type: '坦克类型', tank_nation: '国家', alpha_damage: '炮伤',
-  rating: '评分', survived_label: '存活',
+  tank_type: '坦克类型', tank_nation: '国家', rating: '评分', survived_label: '存活',
   kills: '击杀', damage_dealt: '伤害', damage_assisted: '协助伤害',
   damage_received: '损失血量', damage_blocked: '格挡', n_shots: '发射',
   n_hits_dealt: '命中', n_penetrations_dealt: '击穿', n_hits_received: '被命中',
   n_penetrations_received: '被击穿', n_enemies_damaged: '击伤',
-  platoon_label: '排', rank: '军阶', tank_id: '车辆ID', account_id: '账号ID'
+  platoon_label: '排', tank_id: '车辆ID', account_id: '账号ID'
 }
 const AGG_LABELS = {
   nickname: '玩家', clan: '战队', battles: '场次', wins: '胜场',
@@ -49,14 +45,9 @@ const AGG_LABELS = {
   received_avg: '场均损失血量', blocked_avg: '场均格挡', hit_rate: '命中率%', pen_rate: '击穿率%',
   enemies_damaged_avg: '场均击伤', tanks: '用车', account_id: '账号ID'
 }
-const RATING_LABELS = {
-  nickname: '玩家', clan: '战队', battles: '场次', wins: '胜场', win_rate: '胜率%',
-  rating: 'Rating', kast: 'KAST%', contribution: '贡献率%', influence: '影响力',
-  damage_avg: '均伤', kills: '人头', kills_avg: '场均人头', account_id: '账号ID'
-}
+const ORIGINAL_PLAYER_KEYS = new Set(Object.keys(PLAYER_LABELS))
 const playerLabel = (key) => PLAYER_LABELS[key] || key
 const aggLabel = (key) => AGG_LABELS[key] || key
-const ratingLabel = (key) => RATING_LABELS[key] || key
 
 onMounted(async () => {
   try {
@@ -72,8 +63,6 @@ function addFiles(list) {
   const byKey = new Map(files.value.map(f => [fileKey(f), f]))
   picked.forEach(f => byKey.set(fileKey(f), f))
   files.value = Array.from(byKey.values()).sort((a, b) => displayName(a).localeCompare(displayName(b)))
-  resp.value = null
-  ratingResp.value = null
   error.value = ''
 }
 
@@ -98,15 +87,12 @@ function onDrop(e) {
 function clearFiles() {
   files.value = []
   resp.value = null
-  ratingResp.value = null
   error.value = ''
 }
 
 function removeFile(f) {
   const k = fileKey(f)
   files.value = files.value.filter(x => fileKey(x) !== k)
-  resp.value = null
-  ratingResp.value = null
 }
 
 // 移除某一场: 先弹确认对话框
@@ -124,9 +110,8 @@ function confirmRemoveBattle() {
   pendingRemove.value = null
   if (!battle) return
   files.value = files.value.filter(f => displayName(f) !== battle.sourceName)
-  ratingResp.value = null
   if (files.value.length) preview()
-  else { resp.value = null; ratingResp.value = null; activeTab.value = 'aggregate' }
+  else { resp.value = null; activeTab.value = 'aggregate' }
 }
 
 function formData() {
@@ -142,33 +127,13 @@ async function preview() {
     const r = await fetch('/api/preview', { method: 'POST', body: formData() })
     if (!r.ok) throw new Error('解析失败: HTTP ' + r.status)
     resp.value = await r.json()
-    playerCols.value = resp.value.playerColumns
+    playerCols.value = resp.value.playerColumns.filter(c => ORIGINAL_PLAYER_KEYS.has(c.key))
     if (!visibleKeys.value.length) visibleKeys.value = [...DEFAULT_VISIBLE]
     // 汇总表默认显示全部列
     if (!aggVisibleKeys.value.length) {
       aggVisibleKeys.value = (resp.value.aggregateColumns || []).map(c => c.key)
     }
     activeTab.value = resp.value.battles.length > 1 ? 'aggregate' : 'b0'
-  } catch (e) {
-    error.value = e.message
-  } finally {
-    loading.value = false
-  }
-}
-
-async function openRating() {
-  if (!files.value.length) { error.value = '请先选择回放文件或文件夹'; return }
-  loading.value = true; error.value = ''
-  try {
-    const r = await fetch('/api/rating', { method: 'POST', body: formData() })
-    if (!r.ok) throw new Error('Rating计算失败: HTTP ' + r.status)
-    ratingResp.value = await r.json()
-    ratingCols.value = ratingResp.value.ratingColumns || []
-    if (!ratingVisibleKeys.value.length) {
-      ratingVisibleKeys.value = ratingCols.value.map(c => c.key)
-    }
-    activeTab.value = 'rating'
-    window.location.hash = 'rating'
   } catch (e) {
     error.value = e.message
   } finally {
@@ -217,46 +182,28 @@ async function shutdown() {
 }
 
 const aggCols = computed(() => resp.value?.aggregateColumns || [])
-const activeRatingCols = computed(() => ratingCols.value || [])
 
 // 各表实际显示的列(按规范列顺序过滤)
 const shownCols = computed(() =>
   playerCols.value.filter(c => visibleKeys.value.includes(c.key)))
 const shownAggCols = computed(() =>
   aggCols.value.filter(c => aggVisibleKeys.value.includes(c.key)))
-const shownRatingCols = computed(() =>
-  activeRatingCols.value.filter(c => ratingVisibleKeys.value.includes(c.key)))
 
 // 列选择器作用于"当前所在的表"
-const colScope = computed(() => {
-  if (activeTab.value === 'aggregate') return 'agg'
-  if (activeTab.value === 'rating') return 'rating'
-  return 'player'
-})
-const pickerCols = computed(() => {
-  if (pickerScope.value === 'agg') return aggCols.value
-  if (pickerScope.value === 'rating') return activeRatingCols.value
-  return playerCols.value
-})
-const pickerLabel = (key) => {
-  if (pickerScope.value === 'agg') return aggLabel(key)
-  if (pickerScope.value === 'rating') return ratingLabel(key)
-  return playerLabel(key)
-}
+const colScope = computed(() => (activeTab.value === 'aggregate' ? 'agg' : 'player'))
+const pickerCols = computed(() => (pickerScope.value === 'agg' ? aggCols.value : playerCols.value))
+const pickerLabel = (key) => (pickerScope.value === 'agg' ? aggLabel(key) : playerLabel(key))
 
 function openColPicker() {
   if (showColPicker.value) { showColPicker.value = false; return }
   pickerScope.value = colScope.value
-  const current = pickerScope.value === 'agg'
-    ? aggVisibleKeys.value
-    : pickerScope.value === 'rating' ? ratingVisibleKeys.value : visibleKeys.value
+  const current = pickerScope.value === 'agg' ? aggVisibleKeys.value : visibleKeys.value
   draftKeys.value = [...current]
   showColPicker.value = true
 }
 
 function applyColumns() {
   if (pickerScope.value === 'agg') aggVisibleKeys.value = [...draftKeys.value]
-  else if (pickerScope.value === 'rating') ratingVisibleKeys.value = [...draftKeys.value]
   else visibleKeys.value = [...draftKeys.value]
   showColPicker.value = false
 }
@@ -268,7 +215,7 @@ function setAllColumns() {
 function resetColumns() {
   draftKeys.value = pickerScope.value === 'agg'
     ? aggCols.value.map(c => c.key)
-    : pickerScope.value === 'rating' ? activeRatingCols.value.map(c => c.key) : [...DEFAULT_VISIBLE]
+    : [...DEFAULT_VISIBLE]
 }
 
 function sortBy(scope, col) {
@@ -301,13 +248,6 @@ function fmtDuration(s) {
   const t = Math.floor(s)
   return `${Math.floor(t / 60)}分${t % 60}秒`
 }
-
-function countMapText(m) {
-  return Object.entries(m || {})
-    .sort((a, b) => Number(a[0]) - Number(b[0]))
-    .map(([k, v]) => `${k}:${v}`)
-    .join('  ')
-}
 </script>
 
 <template>
@@ -328,10 +268,9 @@ function countMapText(m) {
       </label>
       <button class="ghost" :disabled="loading || !files.length" @click="clearFiles">清空</button>
       <button :disabled="loading || !files.length" @click="preview">解析预览</button>
-      <button :disabled="loading || !files.length" @click="openRating">Rating分析</button>
       <button :disabled="loading || !files.length" @click="exportXlsx('aggregate')">合并汇总(去重)</button>
       <button :disabled="loading || !files.length" @click="exportXlsx('each')">每场单独导出</button>
-      <button v-if="resp || ratingResp" class="ghost" @click="openColPicker">选择列</button>
+      <button v-if="resp" class="ghost" @click="openColPicker">选择列</button>
       <span class="muted">{{ files.length ? `已选 ${files.length} 个回放` : '未选择文件' }}</span>
       <span v-if="loading" class="muted">处理中…</span>
     </section>
@@ -353,7 +292,7 @@ function countMapText(m) {
     <p v-if="error" class="error">{{ error }}</p>
 
     <div v-if="showColPicker && pickerCols.length" class="colpicker">
-      <div class="colTitle">选择「{{ pickerScope === 'agg' ? '汇总表' : pickerScope === 'rating' ? 'Rating表' : '单场表' }}」显示的列：</div>
+      <div class="colTitle">选择「{{ pickerScope === 'agg' ? '汇总表' : '单场表' }}」显示的列：</div>
       <label v-for="c in pickerCols" :key="c.key">
         <input type="checkbox" :value="c.key" v-model="draftKeys" /> {{ pickerLabel(c.key) }}
       </label>
@@ -365,41 +304,26 @@ function countMapText(m) {
       </div>
     </div>
 
-    <template v-if="resp || ratingResp">
-      <div v-if="(activeTab === 'rating' ? ratingResp?.duplicates : resp?.duplicates)?.length" class="warn">
-        已跳过 {{ (activeTab === 'rating' ? ratingResp.duplicates : resp.duplicates).length }} 个重复上传：
-        <span v-for="(d, i) in (activeTab === 'rating' ? ratingResp.duplicates : resp.duplicates)" :key="i">{{ d[0] }}</span>
+    <template v-if="resp">
+      <div v-if="resp.duplicates.length" class="warn">
+        已跳过 {{ resp.duplicates.length }} 个重复上传：
+        <span v-for="(d, i) in resp.duplicates" :key="i">{{ d[0] }}</span>
       </div>
-      <div v-if="(activeTab === 'rating' ? ratingResp?.failures : resp?.failures)?.length" class="error">
-        {{ (activeTab === 'rating' ? ratingResp.failures : resp.failures).length }} 个文件解析失败：
-        <span v-for="(f, i) in (activeTab === 'rating' ? ratingResp.failures : resp.failures)" :key="i">{{ f[0] }} ({{ f[1] }})</span>
+      <div v-if="resp.failures.length" class="error">
+        {{ resp.failures.length }} 个文件解析失败：
+        <span v-for="(f, i) in resp.failures" :key="i">{{ f[0] }} ({{ f[1] }})</span>
       </div>
 
       <div class="tabs">
-        <button v-if="resp?.aggregate.length" :class="{ active: activeTab === 'aggregate' }"
+        <button v-if="resp.aggregate.length" :class="{ active: activeTab === 'aggregate' }"
                 @click="activeTab = 'aggregate'">汇总 ({{ resp.aggregate.length }} 名选手)</button>
-        <button v-if="ratingResp?.rows.length" :class="{ active: activeTab === 'rating' }"
-                @click="activeTab = 'rating'">Rating ({{ ratingResp.rows.length }} 名选手)</button>
-        <button v-for="(b, i) in resp?.battles || []" :key="i" :class="{ active: activeTab === 'b' + i }"
+        <button v-for="(b, i) in resp.battles" :key="i" :class="{ active: activeTab === 'b' + i }"
                 @click="activeTab = 'b' + i">{{ b.mapName }} #{{ i + 1 }}
           <span class="tabx" title="移除该场" @click.stop="askRemoveBattle(b, i)">×</span>
         </button>
       </div>
 
-      <div v-if="activeTab === 'rating' && ratingResp?.rows.length" class="tablewrap">
-        <table>
-          <thead><tr>
-            <th v-for="c in shownRatingCols" :key="c.key" @click="sortBy('rating', c)">{{ ratingLabel(c.key) }}{{ arrow('rating', c.key) }}</th>
-          </tr></thead>
-          <tbody>
-            <tr v-for="(row, i) in sorted(ratingResp.rows, 'rating', shownRatingCols)" :key="i">
-              <td v-for="c in shownRatingCols" :key="c.key" :class="{ num: c.num, left: LEFT_KEYS.has(c.key) }">{{ row.cells[c.key] }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div v-if="activeTab === 'aggregate' && resp?.aggregate.length" class="tablewrap">
+      <div v-if="activeTab === 'aggregate' && resp.aggregate.length" class="tablewrap">
         <table>
           <thead><tr>
             <th v-for="c in shownAggCols" :key="c.key" @click="sortBy('agg', c)">{{ aggLabel(c.key) }}{{ arrow('agg', c.key) }}</th>
@@ -412,66 +336,9 @@ function countMapText(m) {
         </table>
       </div>
 
-      <div v-for="(b, i) in resp?.battles || []" :key="i" v-show="activeTab === 'b' + i" class="tablewrap">
+      <div v-for="(b, i) in resp.battles" :key="i" v-show="activeTab === 'b' + i" class="tablewrap">
         <p class="info">地图: {{ b.mapName }} · 时长: {{ fmtDuration(b.durationS) }}
           · 获胜: {{ TEAM[b.winnerTeam] || '平局/未知' }} · 版本: {{ b.version }}</p>
-        <p v-if="b.replayTrace?.present" class="info trace">
-          data.wotreplay:
-          client={{ b.replayTrace.clientVersion || '-' }}
-          · packets={{ b.replayTrace.packetCount }}
-          · clock={{ b.replayTrace.firstClock }}-{{ b.replayTrace.lastClock }}s
-          · maxPayload={{ b.replayTrace.maxPayloadBytes }}B
-          · types=[{{ countMapText(b.replayTrace.packetTypes) }}]
-          · typeMax=[{{ countMapText(b.replayTrace.packetTypeMaxPayloadBytes) }}]
-          · entitySubtypes=[{{ countMapText(b.replayTrace.entityMethodSubtypes) }}]
-          · entityMax=[{{ countMapText(b.replayTrace.entityMethodSubtypeMaxPayloadBytes) }}]
-          <span v-if="b.replayTrace.error">· error={{ b.replayTrace.error }}</span>
-        </p>
-        <p v-else class="info trace">data.wotreplay: missing</p>
-        <table v-if="b.replayTrace?.packetGroups?.length" class="tracetable">
-          <thead><tr>
-            <th>packetType</th>
-            <th>count</th>
-            <th>payload</th>
-            <th>clock</th>
-            <th>accountHits</th>
-            <th>tankHits</th>
-            <th>sampleHex</th>
-          </tr></thead>
-          <tbody>
-            <tr v-for="g in b.replayTrace.packetGroups" :key="'pt-' + g.id">
-              <td class="num">{{ g.id }}</td>
-              <td class="num">{{ g.count }}</td>
-              <td class="num">{{ g.minPayloadBytes }}/{{ g.avgPayloadBytes }}/{{ g.maxPayloadBytes }}</td>
-              <td class="num">{{ g.firstClock }}-{{ g.lastClock }}</td>
-              <td class="num">{{ g.accountIdPayloads }} <span v-if="g.sampleAccountIds">({{ g.sampleAccountIds }})</span></td>
-              <td class="num">{{ g.tankIdPayloads }} <span v-if="g.sampleTankIds">({{ g.sampleTankIds }})</span></td>
-              <td class="left mono">{{ g.sampleHexPrefix }}</td>
-            </tr>
-          </tbody>
-        </table>
-        <table v-if="b.replayTrace?.entityMethodGroups?.length" class="tracetable">
-          <thead><tr>
-            <th>entitySubtype</th>
-            <th>count</th>
-            <th>payload</th>
-            <th>clock</th>
-            <th>accountHits</th>
-            <th>tankHits</th>
-            <th>sampleHex</th>
-          </tr></thead>
-          <tbody>
-            <tr v-for="g in b.replayTrace.entityMethodGroups" :key="'em-' + g.id">
-              <td class="num">{{ g.id }}</td>
-              <td class="num">{{ g.count }}</td>
-              <td class="num">{{ g.minPayloadBytes }}/{{ g.avgPayloadBytes }}/{{ g.maxPayloadBytes }}</td>
-              <td class="num">{{ g.firstClock }}-{{ g.lastClock }}</td>
-              <td class="num">{{ g.accountIdPayloads }} <span v-if="g.sampleAccountIds">({{ g.sampleAccountIds }})</span></td>
-              <td class="num">{{ g.tankIdPayloads }} <span v-if="g.sampleTankIds">({{ g.sampleTankIds }})</span></td>
-              <td class="left mono">{{ g.sampleHexPrefix }}</td>
-            </tr>
-          </tbody>
-        </table>
         <table>
           <thead><tr>
             <th v-for="c in shownCols" :key="c.key" @click="sortBy('b' + i, c)">{{ playerLabel(c.key) }}{{ arrow('b' + i, c.key) }}</th>
@@ -482,33 +349,6 @@ function countMapText(m) {
               <td v-for="c in shownCols" :key="c.key" :class="{ num: c.num, left: LEFT_KEYS.has(c.key) }">
                 {{ row.cells[c.key] }}
               </td>
-            </tr>
-          </tbody>
-        </table>
-        <p v-if="b.battleRawColumns?.length" class="rawtitle">战斗原始字段</p>
-        <table v-if="b.battleRawColumns?.length" class="rawtable">
-          <thead><tr>
-            <th v-for="key in b.battleRawColumns" :key="key">{{ key }}</th>
-          </tr></thead>
-          <tbody>
-            <tr>
-              <td v-for="key in b.battleRawColumns" :key="key">{{ b.battleRaw?.[key] }}</td>
-            </tr>
-          </tbody>
-        </table>
-        <p v-if="b.rawColumns?.length" class="rawtitle">玩家原始字段</p>
-        <table v-if="b.rawColumns?.length" class="rawtable">
-          <thead><tr>
-            <th>玩家</th>
-            <th>账号ID</th>
-            <th v-for="key in b.rawColumns" :key="key">{{ key }}</th>
-          </tr></thead>
-          <tbody>
-            <tr v-for="(row, ri) in sorted(b.players, 'b' + i, shownCols)" :key="'raw-' + ri"
-                :class="row.team === 1 ? 't1' : 't2'">
-              <td class="left">{{ row.cells.nickname }}</td>
-              <td class="num">{{ row.cells.account_id }}</td>
-              <td v-for="key in b.rawColumns" :key="key">{{ row.raw?.[key] }}</td>
             </tr>
           </tbody>
         </table>
@@ -565,9 +405,7 @@ button:disabled { opacity: .5; cursor: default; }
 .tabs button { background: #e8edf5; color: #2f5597; border-color: #c7d3e6; }
 .tabs button.active { background: #2f5597; color: #fff; }
 .info { color: #1b5e20; font-size: 13px; margin: 6px 0; }
-.trace { color: #374151; }
 .tablewrap { overflow-x: auto; background: #fff; }
-.rawtitle { margin: 14px 0 6px; color: #2f5597; font-size: 13px; font-weight: bold; }
 /* 按内容自然宽度排列(不挤压列), 内容窄时仍填满容器; 横向滚动可完整看到末列 */
 table { border-collapse: collapse; width: max-content; min-width: 100%; font-size: 13px; }
 th, td { border: 1px solid #cfd8e3; padding: 4px 8px; white-space: nowrap; }
@@ -576,11 +414,6 @@ th { background: #2f5597; color: #fff; cursor: pointer; user-select: none; posit
 th:last-child, td:last-child { padding-right: 16px; }
 td.num { text-align: center; }
 td.left { text-align: left; }
-.mono { font-family: Consolas, "Courier New", monospace; }
-.tracetable { font-size: 12px; margin: 4px 0 8px; }
-.tracetable td { max-width: 520px; overflow: hidden; text-overflow: ellipsis; }
-.rawtable { font-size: 12px; margin-bottom: 8px; }
-.rawtable td { font-family: Consolas, "Courier New", monospace; max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
 tr.t1 td { background: #ddebf7; }
 tr.t2 td { background: #fce4d6; }
 .closed { padding: 30px; font-family: "Segoe UI", "Microsoft YaHei", sans-serif; }

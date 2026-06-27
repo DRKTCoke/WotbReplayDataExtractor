@@ -2,6 +2,7 @@ package com.wotb.web;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -42,14 +43,24 @@ class WebApiTest {
 
     private static List<Path> replays() throws Exception {
         Path dir = Path.of(System.getProperty("user.dir"), "..", "..", "common", "data").normalize();
+        Assumptions.assumeTrue(Files.isDirectory(dir), "common/data 样本目录不存在, 跳过真实回放 API 回归");
         try (Stream<Path> s = Files.list(dir)) {
-            return s.filter(p -> p.toString().toLowerCase().endsWith(".wotbreplay")).sorted().toList();
+            List<Path> files = s.filter(p -> p.toString().toLowerCase().endsWith(".wotbreplay")).sorted().toList();
+            Assumptions.assumeTrue(!files.isEmpty(), "common/data 中没有 .wotbreplay, 跳过真实回放 API 回归");
+            return files;
         }
     }
 
     private static MockMultipartFile file(Path p) throws Exception {
         return new MockMultipartFile("files", p.getFileName().toString(),
                 "application/octet-stream", Files.readAllBytes(p));
+    }
+
+    @Test
+    void extendedPageAliasForwardsToStaticHtml() throws Exception {
+        mvc().perform(get("/extended"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl("/extended.html"));
     }
 
     @Test
@@ -61,6 +72,7 @@ class WebApiTest {
         assertTrue(n.get("player").size() > 10);
         assertTrue(stream(n.get("player")).anyMatch(c -> "rank".equals(c.get("key").asText())));
         assertTrue(stream(n.get("player")).anyMatch(c -> "alpha_damage".equals(c.get("key").asText())));
+        assertTrue(stream(n.get("player")).anyMatch(c -> "potential_damage".equals(c.get("key").asText())));
         assertTrue(n.get("aggregate").size() > 10);
         assertTrue(n.get("rating").size() > 5);
     }
@@ -87,6 +99,8 @@ class WebApiTest {
         assertTrue(cells.has("contribution"));
         assertTrue(cells.has("influence"));
         assertTrue(cells.has("damage_avg"));
+        assertTrue(cells.has("potential_damage_avg"));
+        assertTrue(cells.has("potential_damage_supplement_avg"));
         assertTrue(cells.has("kills"));
         assertTrue(cells.get("rating").asInt() > 0);
     }
@@ -123,6 +137,8 @@ class WebApiTest {
         assertTrue(b0.get("replayTrace").has("packetGroups"));
         assertTrue(b0.get("replayTrace").has("entityMethodGroups"));
         assertTrue(b0.get("players").get(0).get("cells").has("damage_dealt"));
+        assertTrue(b0.get("players").get(0).get("cells").has("potential_damage"));
+        assertTrue(b0.get("players").get(0).get("cells").has("potential_damage_supplement"));
         assertTrue(b0.get("players").get(0).has("raw"));
         assertTrue(b0.get("players").get(0).get("raw").has("#101"));
     }

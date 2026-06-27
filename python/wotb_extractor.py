@@ -232,6 +232,10 @@ def parse_replay(path):
         rec = {key: f_uint(info, num) for key, num in RESULT_UINT_FIELDS.items()}
         rec["result_id"] = f1(r, 1)
         rec["damage_assisted"] = sum(f_uint(info, num) for num in ASSIST_FIELDS)
+        # 逐击杀目标明细尚未解析时, 潜在伤害先保守等于实际伤害。
+        rec["potential_damage"] = rec.get("damage_dealt", 0)
+        rec["potential_damage_supplement"] = 0
+        rec["potential_damage_detail"] = "未解析"
         rec["_raw"] = dict(info)
         # 存活判断: 仅幸存者带有 #105 == -1(全F) 标记; 阵亡者无此字段
         rec["survived"] = (f1(info, FIELD_SURVIVED) == UINT_NEG1)
@@ -290,6 +294,9 @@ STAT_COLUMNS = [
     Col("存活", "survived_label", 6, 45, False),
     Col("击杀", "kills", 6, 45, True),
     Col("伤害", "damage_dealt", 8, 65, True),
+    Col("潜在伤害", "potential_damage", 9, 70, True),
+    Col("补增伤害", "potential_damage_supplement", 9, 70, True),
+    Col("潜在明细", "potential_damage_detail", 9, 65, False),
     Col("协助伤害", "damage_assisted", 9, 65, True),
     Col("损失血量", "damage_received", 9, 65, True),
     Col("格挡", "damage_blocked", 9, 65, True),

@@ -2,6 +2,7 @@ package com.wotb.core;
 
 import com.wotb.core.model.Battle;
 import com.wotb.core.model.PlayerResult;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -25,8 +26,11 @@ class ParityTest {
     }
 
     private static List<Path> replays() throws Exception {
+        Assumptions.assumeTrue(Files.isDirectory(dataDir()), "common/data 样本目录不存在, 跳过真实回放回归");
         try (Stream<Path> s = Files.list(dataDir())) {
-            return s.filter(p -> p.toString().toLowerCase().endsWith(".wotbreplay")).sorted().toList();
+            List<Path> files = s.filter(p -> p.toString().toLowerCase().endsWith(".wotbreplay")).sorted().toList();
+            Assumptions.assumeTrue(!files.isEmpty(), "common/data 中没有 .wotbreplay, 跳过真实回放回归");
+            return files;
         }
     }
 
